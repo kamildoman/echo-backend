@@ -15,8 +15,13 @@ func SetupRoutes (app *fiber.App) {
 	api.Post("logout", functions.Logout)
 	api.Post("create_post", functions.CreatePost)
 	api.Post("create_comment", functions.CreateComment)
+	api.Post("send_message", functions.SendMessage)
+	api.Post("read_message", functions.ReadMessage)
 	api.Get("posts", functions.GetPosts)
 	api.Get("user", functions.AuthenticateUser)
+	api.Get("health", functions.HealthCheck)
+	api.Get("user_id", functions.GetUserByID)
+	api.Get("user_messages", functions.GetUsersMessages)
 }
 
 func main() {

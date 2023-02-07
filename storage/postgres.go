@@ -23,9 +23,11 @@ type Config struct {
 var DB *gorm.DB
 
 func NewConnection() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatal(err)
+	if os.Getenv("GO_ENV") != "production" {
+		err := godotenv.Load(".env")
+		if err != nil {
+			log.Fatal("Error loading .env file")
+		}
 	}
 	
 	config := &Config{

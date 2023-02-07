@@ -6,8 +6,8 @@ import (
 
 type Users struct {
 	ID       string `gorm:"unique" json:"id"`
-	Email    *string `gorm:"unique" json:"email"`
-	Username *string `gorm:"unique" json:"username"`
+	Email    *string `json:"email"`
+	Username *string `json:"username"`
 	Avatar 	 string `json:"avatar"`
 	Level    *int    `json:"level"`
 	Password *string `json:"-"`
@@ -28,8 +28,18 @@ type Comments struct {
     PostID *string `json:"postId"`
 }
 
+type Messages struct {
+	MessageID      string `json:"message_id"`
+	Title		  *string `json:"title"`
+	Message       *string `json:"message"`
+	SendUserID    *string `json:"send_user_id"`
+	RecieveUserID *string `json:"recieve_user_id"`
+	CreatedAt     *int    `json:"created_at"`
+	Read          *bool   `json:"read"`
+}
+
 func MigrateUsers(db *gorm.DB) error{
-	// db.Migrator().CreateTable(Comments{})
+	// db.Migrator().CreateTable(Messages{})
 	err := db.AutoMigrate(&Users{}, &Posts{}, &Comments{})
 	return err
 }

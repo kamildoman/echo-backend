@@ -14,7 +14,7 @@ import (
 )
 
 type User struct {
-    ID string
+    ID string `json:"id"`
     Email string `json:"email"`
     Username string `json:"username"`
     Password string `json:"password"`
@@ -22,6 +22,25 @@ type User struct {
     Level int `json:"level"`
     // Posts []Post `gorm:"foreignkey:UserID"`
     // Comments []Comment `gorm:"foreignkey:UserID"`
+}
+
+func HealthCheck(c *fiber.Ctx) error {
+	c.Status(http.StatusOK).JSON(
+		&fiber.Map{"message": "OK"})
+	return nil
+}
+
+func GetUserByID(context *fiber.Ctx) error {
+	id := context.Query("id")
+	var user User
+	err := storage.DB.Select("id, level, username, email").Where("id = ?", id).First(&user).Error
+	if err != nil {
+		context.Status(http.StatusBadRequest).JSON(
+			&fiber.Map{"message": "could not get user"})
+		return err
+	}
+	context.Status(http.StatusOK).JSON(user)
+	return nil
 }
 
 func CreateUser (context *fiber.Ctx) error{
@@ -130,6 +149,9 @@ func AuthenticateUser (context *fiber.Ctx) error {
 	var user models.Users
 
 	storage.DB.Where("id = ?", claims.Issuer).First(&user)
+
+	var count int64
+	storage.DB.Model(&Message{}).Where("recieve_user_id = ? and read = false", user.ID).Count(&count)
 
 	return context.JSON(user)
 }
