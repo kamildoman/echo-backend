@@ -19,6 +19,7 @@ type Message struct {
 	CreatedAt     int    `json:"created_at"`
 	Read          bool   `json:"read"`
 	User User `gorm:"foreignkey:SendUserID"`
+	ReceiveUser User `gorm:"foreignkey:RecieveUserID"`
 }
 
 func SendMessage(context *fiber.Ctx) error {
@@ -66,9 +67,21 @@ func GetUsersMessages (context *fiber.Ctx) error {
 
 	userId := claims.Issuer
 
-	var messages []*Message
-	storage.DB.Order("created_at desc").Where("recieve_user_id = ?", userId).Preload("User").Find(&messages)
+	var sentMessages, receivedMessages []*Message
+	storage.DB.Order("created_at desc").Where("send_user_id = ?", userId).Preload("ReceiveUser").Find(&sentMessages)
+	storage.DB.Order("created_at desc").Where("recieve_user_id = ?", userId).Preload("User").Find(&receivedMessages)
 
+	res := make(map[string]interface{})
+	res["sent"] = formatMessages(sentMessages, false)
+	res["received"] = formatMessages(receivedMessages, true)
+
+	context.Status(http.StatusOK).JSON(
+		&fiber.Map{"data": res})
+
+	return nil
+}
+
+func formatMessages(messages []*Message, receive bool) []map[string]interface{} {
 	res := make([]map[string]interface{}, len(messages))
 	for i, message := range messages {
 		messageMap := make(map[string]interface{})
@@ -76,16 +89,18 @@ func GetUsersMessages (context *fiber.Ctx) error {
 		messageMap["title"] = message.Title
 		messageMap["message_id"] = message.MessageID
 		messageMap["sent_user_id"] = message.SendUserID
-		messageMap["username"] = message.User.Username
+		if receive {
+            messageMap["username"] = message.User.Username
+			messageMap["avatar"] = message.User.Avatar
+        } else {
+            messageMap["username"] = message.ReceiveUser.Username
+			messageMap["avatar"] = message.ReceiveUser.Avatar
+        }
 		messageMap["read"] = message.Read
-		messageMap["avatar"] = message.User.Avatar
+		
 		res[i] = messageMap
 	}
-
-	context.Status(http.StatusOK).JSON(
-		&fiber.Map{"data": res})
-
-	return nil
+	return res
 }
 
 func ReadMessage (context *fiber.Ctx) error {
