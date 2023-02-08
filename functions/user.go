@@ -1,10 +1,17 @@
 package functions
 
 import (
+	"bytes"
+	"encoding/base64"
+	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/kamildoman/echo-backend/models"
@@ -33,13 +40,84 @@ func HealthCheck(c *fiber.Ctx) error {
 func GetUserByID(context *fiber.Ctx) error {
 	id := context.Query("id")
 	var user User
-	err := storage.DB.Select("id, level, username, email").Where("id = ?", id).First(&user).Error
+	err := storage.DB.Select("id, level, username, email, avatar").Where("id = ?", id).First(&user).Error
 	if err != nil {
 		context.Status(http.StatusBadRequest).JSON(
 			&fiber.Map{"message": "could not get user"})
 		return err
 	}
 	context.Status(http.StatusOK).JSON(user)
+	return nil
+}
+
+type AvatarRequestData struct {
+    Blob string `json:"blob"`
+    Name string `json:"name"`
+}
+
+func UpdateAvatar (c *fiber.Ctx) error {
+	cookie := c.Cookies("jwt")
+
+	SecretKey := os.Getenv("SECRET_KEY")
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error){
+		return []byte(SecretKey), nil
+	})
+
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "unauthenticated",
+		})
+	}
+
+	claims := token.Claims.(*jwt.StandardClaims)
+
+	userId := claims.Issuer
+
+	blobData := AvatarRequestData{}
+	
+	c.BodyParser(&blobData)
+	if err != nil {
+		c.Status(http.StatusUnprocessableEntity).JSON(
+			&fiber.Map{"message": "request failed"})
+		return err
+	}
+
+	conf := aws.Config{Region: aws.String("eu-central-1")}
+    sess := session.New(&conf)
+
+    svc := s3manager.NewUploader(sess)
+
+	decodedImage, err := base64.StdEncoding.DecodeString(blobData.Blob)
+
+	if err != nil {
+		c.Status(http.StatusUnprocessableEntity).JSON(
+			&fiber.Map{"message": "Error decoding the image"})
+		return err
+	}
+    fmt.Println("Uploading file to S3...")
+	reader := bytes.NewReader(decodedImage)
+    result, err := svc.Upload(&s3manager.UploadInput{
+        Bucket: aws.String("echoavatars"),
+        Key:    aws.String(blobData.Name),
+        Body:   reader,
+    })
+
+	if err != nil {
+		c.SendStatus(fiber.StatusInternalServerError)
+		log.Println("Failed to upload file to S3:", err)
+		return nil
+	}
+
+	err = storage.DB.Model(&User{}).Where("id = ?", userId).Update("avatar", result.Location).Error
+
+	if err != nil {
+		c.Status(http.StatusBadRequest).JSON(
+			&fiber.Map{"message": "could not update the avatar"})
+		return err
+	}
+
+	c.Status(http.StatusOK).JSON(
+		&fiber.Map{"message": "avatar updated!"})
 	return nil
 }
 

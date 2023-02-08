@@ -17,6 +17,7 @@ func SetupRoutes (app *fiber.App) {
 	api.Post("create_comment", functions.CreateComment)
 	api.Post("send_message", functions.SendMessage)
 	api.Post("read_message", functions.ReadMessage)
+	api.Post("update_avatar", functions.UpdateAvatar)
 	api.Get("posts", functions.GetPosts)
 	api.Get("user", functions.AuthenticateUser)
 	api.Get("health", functions.HealthCheck)
