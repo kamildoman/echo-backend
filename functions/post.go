@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/kamildoman/echo-backend/storage"
+	"github.com/lib/pq"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -23,6 +24,7 @@ type Post struct {
     Message string `json:"message"`
 	CreatedAt int `json:"created_at"`
     UserID string `json:"userId"`
+	Likes pq.StringArray `gorm:"type:text[]" json:"likes"`
     User User `gorm:"foreignkey:UserID"`
     Comments []Comment `gorm:"foreignkey:PostID"`
 }
@@ -30,6 +32,54 @@ type Post struct {
 type Indexes struct {
 	End int `json:"end"`
 	Start int `json:"start"`
+}
+
+type Like struct {
+	PostID string `json:"post_id"`
+	UserID string `json:"user_id"`
+}
+
+func ToggleLike(context *fiber.Ctx) error {
+    like := Like{}
+	err := context.BodyParser(&like)
+	if err != nil {
+		context.Status(http.StatusUnprocessableEntity).JSON(
+			&fiber.Map{"message": "request failed"})
+		return err
+	}
+
+    post := Post{}
+    err = storage.DB.Where("id = ?", like.PostID).First(&post).Error
+    if err != nil {
+        context.Status(http.StatusBadRequest).JSON(
+            &fiber.Map{"message": "could not find the post"})
+        return err
+    }
+
+    foundIndex := -1
+    for i, id := range post.Likes {
+        if id == like.UserID {
+            foundIndex = i
+            break
+        }
+    }
+
+    if foundIndex >= 0 {
+        post.Likes = append(post.Likes[:foundIndex], post.Likes[foundIndex+1:]...)
+    } else {
+        post.Likes = append(post.Likes, like.UserID)
+    }
+
+    err = storage.DB.Save(&post).Error
+    if err != nil {
+        context.Status(http.StatusBadRequest).JSON(
+            &fiber.Map{"message": "could not save the post"})
+        return err
+    }
+
+    context.Status(http.StatusOK).JSON(
+        &fiber.Map{"message": "post updated"})
+    return nil
 }
 
 func CreatePost(context *fiber.Ctx) error {
@@ -43,6 +93,7 @@ func CreatePost(context *fiber.Ctx) error {
 	//generate unique id
 	id := uuid.NewV4().String()
 	post.ID = id
+	post.Likes = []string{}
 
 	//save post to database
 	err = storage.DB.Create(&post).Error
@@ -105,6 +156,7 @@ func GetPosts(context *fiber.Ctx) error {
 		postMap := make(map[string]interface{})
 		postMap["message"] = post.Message
 		postMap["id"] = post.ID
+		postMap["likes"] = post.Likes
 		postMap["userId"] = post.UserID
 		postMap["username"] = post.User.Username
 		postMap["avatar"] = post.User.Avatar

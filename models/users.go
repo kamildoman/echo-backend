@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -18,6 +19,7 @@ type Posts struct {
     Message *string `json:"message"`
 	CreatedAt *int `json:"created_at"`
     UserID *string `json:"userId"`
+	Likes pq.StringArray `gorm:"type:text[]" json:"likes"`
 }
 
 type Comments struct {
@@ -40,6 +42,6 @@ type Messages struct {
 
 func MigrateUsers(db *gorm.DB) error{
 	// db.Migrator().CreateTable(Messages{})
-	err := db.AutoMigrate(&Users{}, &Posts{}, &Comments{})
+	err := db.AutoMigrate(&Users{}, &Posts{}, &Comments{}, &Messages{})
 	return err
 }
