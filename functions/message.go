@@ -10,43 +10,58 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-type Message struct {
+type Messages struct {
 	MessageID     string `json:"message_id"`
 	Title		  string `json:"title"`
 	Message       string `json:"message"`
 	SendUserID    string `json:"send_user_id"`
-	RecieveUserID string `json:"recieve_user_id"`
+	ReceiveUserID string `json:"receive_user_id"`
 	CreatedAt     int    `json:"created_at"`
 	Read          bool   `json:"read"`
 	User User `gorm:"foreignkey:SendUserID"`
-	ReceiveUser User `gorm:"foreignkey:RecieveUserID"`
+	ReceiveUser User `gorm:"foreignkey:ReceiveUserID"`
+}
+
+type MessageMultiple struct {
+    Messages
+    ReceiveUserIDs []string `json:"receive_user_ids"`
 }
 
 func SendMessage(context *fiber.Ctx) error {
-	message := Message{}
-	err := context.BodyParser(&message)
-	if err != nil {
-		context.Status(http.StatusUnprocessableEntity).JSON(
-			&fiber.Map{"message": "request failed"})
-		return err
-	}
-	//generate unique id
-	id := uuid.NewV4().String()
-	message.MessageID = id
-	message.Read = false
+    messageMultiple := MessageMultiple{}
+    err := context.BodyParser(&messageMultiple)
+    if err != nil {
+        context.Status(http.StatusUnprocessableEntity).JSON(
+            &fiber.Map{"message": "request failed"})
+        return err
+    }
 
-	//save message to database
-	err = storage.DB.Create(&message).Error
+	addToCreatedAt := 0
+    for _, receiveUserID := range messageMultiple.ReceiveUserIDs {
+		id := uuid.NewV4().String()
+        message := Messages{
+            MessageID:     id,
+            Title:         messageMultiple.Title,
+            Message:       messageMultiple.Message,
+            SendUserID:    messageMultiple.SendUserID,
+            ReceiveUserID: receiveUserID,
+            CreatedAt:     messageMultiple.CreatedAt + addToCreatedAt,
+            Read:          false,
+        }
+		addToCreatedAt += 1
 
-	if err != nil {
-		context.Status(http.StatusBadRequest).JSON(
-			&fiber.Map{"message": "could not send the message"})
-		return err
-	}
+        //save message to database
+        err = storage.DB.Create(&message).Error
+        if err != nil {
+            context.Status(http.StatusBadRequest).JSON(
+                &fiber.Map{"message": "could not send the message"})
+            return err
+        }
+    }
 
-	context.Status(http.StatusOK).JSON(
-		&fiber.Map{"message": "message sent!"})
-	return nil
+    context.Status(http.StatusOK).JSON(
+        &fiber.Map{"message": "message sent!"})
+    return nil
 }
 
 func GetUsersMessages (context *fiber.Ctx) error {
@@ -67,9 +82,9 @@ func GetUsersMessages (context *fiber.Ctx) error {
 
 	userId := claims.Issuer
 
-	var sentMessages, receivedMessages []*Message
+	var sentMessages, receivedMessages []*Messages
 	storage.DB.Order("created_at desc").Where("send_user_id = ?", userId).Preload("ReceiveUser").Find(&sentMessages)
-	storage.DB.Order("created_at desc").Where("recieve_user_id = ?", userId).Preload("User").Find(&receivedMessages)
+	storage.DB.Order("created_at desc").Where("receive_user_id = ?", userId).Preload("User").Find(&receivedMessages)
 
 	res := make(map[string]interface{})
 	res["sent"] = formatMessages(sentMessages, false)
@@ -81,7 +96,7 @@ func GetUsersMessages (context *fiber.Ctx) error {
 	return nil
 }
 
-func formatMessages(messages []*Message, receive bool) []map[string]interface{} {
+func formatMessages(messages []*Messages, receive bool) []map[string]interface{} {
 	res := make([]map[string]interface{}, len(messages))
 	for i, message := range messages {
 		messageMap := make(map[string]interface{})
@@ -130,11 +145,11 @@ func ReadMessage (context *fiber.Ctx) error {
     }
 	
 
-	var message Message
-	storage.DB.Where("recieve_user_id = ? and message_id = ?", userId, payload.MessageID).First(&message)
+	var message Messages
+	storage.DB.Where("receive_user_id = ? and message_id = ?", userId, payload.MessageID).First(&message)
 
 	message.Read = true
-	err = storage.DB.Where("recieve_user_id = ? and message_id = ?", userId, payload.MessageID).Save(&message).Error
+	err = storage.DB.Where("receive_user_id = ? and message_id = ?", userId, payload.MessageID).Save(&message).Error
 	if err != nil {
 		return err
 	}

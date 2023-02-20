@@ -27,8 +27,14 @@ type User struct {
     Password string `json:"password"`
 	Avatar string `json:"avatar,omitempty"`
     Level int `json:"level"`
+	Role int `json:"role"`
     // Posts []Post `gorm:"foreignkey:UserID"`
     // Comments []Comment `gorm:"foreignkey:UserID"`
+}
+
+type Invite struct {
+	Token string `json:"token"`
+	Email string `json:"email"`
 }
 
 func HealthCheck(c *fiber.Ctx) error {
@@ -47,6 +53,31 @@ func GetUserByID(context *fiber.Ctx) error {
 		return err
 	}
 	context.Status(http.StatusOK).JSON(user)
+	return nil
+}
+
+func DeleteUserByID(context *fiber.Ctx) error {
+	id := context.Query("id")
+	err := storage.DB.Model(&User{}).Where("id = ?", id).Update("username", "Użytkownik usunięty").Error
+	if err != nil {
+		context.Status(http.StatusBadRequest).JSON(
+			&fiber.Map{"message": "could not delete user"})
+		return err
+	}
+	context.Status(http.StatusOK).JSON(
+		&fiber.Map{"message": "user deleted successfully"})
+	return nil
+}
+
+func GetAllUsers(context *fiber.Ctx) error {
+	var users []User
+	err := storage.DB.Select("id, level, username, email, avatar, role").Find(&users).Error
+	if err != nil {
+		context.Status(http.StatusBadRequest).JSON(
+			&fiber.Map{"message": "could not get users"})
+		return err
+	}
+	context.Status(http.StatusOK).JSON(users)
 	return nil
 }
 
@@ -121,6 +152,47 @@ func UpdateAvatar (c *fiber.Ctx) error {
 	return nil
 }
 
+func SendRegistrationInvite(context *fiber.Ctx) error {
+    // Parse email address from request body
+    email := struct {
+        Email string `json:"email"`
+    }{}
+    err := context.BodyParser(&email)
+    if err != nil {
+        context.Status(http.StatusUnprocessableEntity).JSON(
+            &fiber.Map{"message": "request failed"})
+        return err
+    }
+    
+    // Generate unique token for registration link
+    token := uuid.NewV4().String()
+    
+    // Save token to database
+    invite := Invite{
+        Token:  token,
+        Email:  email.Email,
+    }
+
+    err = storage.DB.Create(&invite).Error
+    if err != nil {
+        context.Status(http.StatusBadRequest).JSON(
+            &fiber.Map{"message": "could not create invite"})
+        return err
+    }
+    
+    // Send registration invite email
+    // err = emailService.SendRegistrationInvite(email.Email, token)
+    // if err != nil {
+    //     context.Status(http.StatusInternalServerError).JSON(
+    //         &fiber.Map{"message": "could not send registration invite"})
+    //     return err
+    // }
+    
+    context.Status(http.StatusOK).JSON(
+        &fiber.Map{"message": "registration invite sent"})
+    return nil
+}
+
 func CreateUser (context *fiber.Ctx) error{
 	user := User{}
 	err := context.BodyParser(&user)
@@ -182,7 +254,7 @@ func Login (context *fiber.Ctx) error {
 
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
 		Issuer:    user.ID,
-		ExpiresAt: jwt.NewTime(float64(time.Now().Add(time.Hour * 24).Unix())),
+		ExpiresAt: jwt.NewTime(float64(time.Now().Add(time.Hour * 72).Unix())),
 	})
 
 	SecretKey := os.Getenv("SECRET_KEY")
@@ -229,7 +301,7 @@ func AuthenticateUser (context *fiber.Ctx) error {
 	storage.DB.Where("id = ?", claims.Issuer).First(&user)
 
 	var count int64
-	storage.DB.Model(&Message{}).Where("recieve_user_id = ? and read = false", user.ID).Count(&count)
+	storage.DB.Model(&Messages{}).Where("recieve_user_id = ? and read = false", user.ID).Count(&count)
 
 	return context.JSON(user)
 }

@@ -12,6 +12,7 @@ type Users struct {
 	Avatar 	 string `json:"avatar"`
 	Level    *int    `json:"level"`
 	Password *string `json:"-"`
+	Role	 *int    `json:"role"`
 }
 
 type Posts struct {
@@ -38,6 +39,11 @@ type Messages struct {
 	RecieveUserID *string `json:"recieve_user_id"`
 	CreatedAt     *int    `json:"created_at"`
 	Read          *bool   `json:"read"`
+}
+
+type Invites struct {
+	Token *string `json:"token"`
+	Email *string `json:"email"`
 }
 
 func MigrateUsers(db *gorm.DB) error{
