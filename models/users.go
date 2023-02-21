@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
@@ -46,8 +48,27 @@ type Invites struct {
 	Email *string `json:"email"`
 }
 
+type GamMission struct {
+	MissionID   string    `gorm:"primaryKey;not null" json:"mission_id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Category    string    `json:"category"`
+	Exp         int       `json:"exp"`
+	Coins       int       `json:"coins"`
+	StartDate   time.Time `json:"start_date"`
+	Target      int       `json:"target"`
+	EndDate     time.Time `json:"end_date"`
+}
+
+type GamMissionProgress struct {
+	ID   string    `gorm:"primaryKey;not null" json:"id"`
+	GamMissionID string `json:"gam_mission_id"`
+	UserID string `json:"user_id"`
+	Progress int `json:"progress"`
+}
+
 func MigrateUsers(db *gorm.DB) error{
 	// db.Migrator().CreateTable(Messages{})
-	err := db.AutoMigrate(&Users{}, &Posts{}, &Comments{}, &Messages{})
+	err := db.AutoMigrate(&Users{}, &Posts{}, &Comments{}, &Messages{}, &GamMission{}, &GamMissionProgress{})
 	return err
 }

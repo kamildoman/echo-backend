@@ -20,12 +20,17 @@ func SetupRoutes (app *fiber.App) {
 	api.Post("update_avatar", functions.UpdateAvatar)
 	api.Post("like_post", functions.ToggleLike)
 	api.Post("send_email", functions.SendEmail)
+	api.Post("create_mission", functions.CreateMission)
+	api.Post("create_mission_progress", functions.CreateMissionProgress)
 	api.Get("posts", functions.GetPosts)
 	api.Get("user", functions.AuthenticateUser)
 	api.Get("health", functions.HealthCheck)
 	api.Get("user_id", functions.GetUserByID)
 	api.Get("all_users", functions.GetAllUsers)
 	api.Get("user_messages", functions.GetUsersMessages)
+	api.Get("all_missions", functions.GetAllMissions)
+	api.Get("all_missions_progress", functions.GetAllMissionProgress)
+	api.Get("users_mission_progress", functions.GetUsersMissionProgress)
 	api.Delete("delete_user", functions.DeleteUserByID)
 }
 
