@@ -20,7 +20,7 @@ type Users struct {
 type Posts struct {
 	ID string `gorm:"unique" json:"id"`
     Message *string `json:"message"`
-	CreatedAt *int `json:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
     UserID *string `json:"userId"`
 	Likes pq.StringArray `gorm:"type:text[]" json:"likes"`
 }
@@ -28,7 +28,7 @@ type Posts struct {
 type Comments struct {
     ID string `gorm:"unique" json:"id"`
     Message *string `json:"message"`
-	CreatedAt *int `json:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
     UserID *string `json:"userId"`
     PostID *string `json:"postId"`
 }
@@ -38,8 +38,8 @@ type Messages struct {
 	Title		  *string `json:"title"`
 	Message       *string `json:"message"`
 	SendUserID    *string `json:"send_user_id"`
-	RecieveUserID *string `json:"recieve_user_id"`
-	CreatedAt     *int    `json:"created_at"`
+	ReceiveUserID *string `json:"receive_user_id"`
+	CreatedAt     time.Time    `json:"created_at"`
 	Read          *bool   `json:"read"`
 }
 
@@ -67,8 +67,24 @@ type GamMissionProgress struct {
 	Progress int `json:"progress"`
 }
 
+type MetricDefinitions struct {
+	MetricDefId       string `gorm:"primaryKey;not null" json:"metric_def_id"`
+	Name              string `json:"name"`
+	Type              string `json:"type"`
+	Category          string `json:"category"`
+	Description       string `json:"description"`
+	Exp               int    `json:"exp"`
+	Coins             int    `json:"coins"`
+	CalculationMethod string `json:"calculation_method"`
+	Direction         string `json:"direction"`
+	EndValue          int    `json:"end_value"`
+	Weight            int    `json:"weight"`
+	Target            string `json:"target"`
+	PeriodId          int    `json:"period_id"`
+}
+
 func MigrateUsers(db *gorm.DB) error{
 	// db.Migrator().CreateTable(Messages{})
-	err := db.AutoMigrate(&Users{}, &Posts{}, &Comments{}, &Messages{}, &GamMission{}, &GamMissionProgress{})
+	err := db.AutoMigrate(&Users{}, &Posts{}, &Comments{}, &Messages{}, &GamMission{}, &GamMissionProgress{}, &MetricDefinitions{})
 	return err
 }

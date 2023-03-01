@@ -3,6 +3,7 @@ package functions
 import (
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/gofiber/fiber/v2"
@@ -16,7 +17,7 @@ type Messages struct {
 	Message       string `json:"message"`
 	SendUserID    string `json:"send_user_id"`
 	ReceiveUserID string `json:"receive_user_id"`
-	CreatedAt     int    `json:"created_at"`
+	CreatedAt     time.Time    `json:"created_at"`
 	Read          bool   `json:"read"`
 	User User `gorm:"foreignkey:SendUserID"`
 	ReceiveUser User `gorm:"foreignkey:ReceiveUserID"`
@@ -36,7 +37,7 @@ func SendMessage(context *fiber.Ctx) error {
         return err
     }
 
-	addToCreatedAt := 0
+	addToCreatedAt := 1
     for _, receiveUserID := range messageMultiple.ReceiveUserIDs {
 		id := uuid.NewV4().String()
         message := Messages{
@@ -45,7 +46,7 @@ func SendMessage(context *fiber.Ctx) error {
             Message:       messageMultiple.Message,
             SendUserID:    messageMultiple.SendUserID,
             ReceiveUserID: receiveUserID,
-            CreatedAt:     messageMultiple.CreatedAt + addToCreatedAt,
+            CreatedAt:     messageMultiple.CreatedAt.Add(time.Millisecond * time.Duration(addToCreatedAt)),
             Read:          false,
         }
 		addToCreatedAt += 1
@@ -104,6 +105,7 @@ func formatMessages(messages []*Messages, receive bool) []map[string]interface{}
 		messageMap["title"] = message.Title
 		messageMap["message_id"] = message.MessageID
 		messageMap["sent_user_id"] = message.SendUserID
+		messageMap["created_at"] = message.CreatedAt
 		if receive {
             messageMap["username"] = message.User.Username
 			messageMap["avatar"] = message.User.Avatar

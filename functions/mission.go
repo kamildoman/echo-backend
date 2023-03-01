@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"database/sql"
 	"net/http"
 	"time"
 
@@ -156,4 +157,30 @@ func GetAllMissions(context *fiber.Ctx) error {
 	}
 	context.Status(http.StatusOK).JSON(missions)
 	return nil
+}
+
+func MissionComplete(c *fiber.Ctx) error {
+    type RequestBody struct {
+        UserID    string `json:"user_id"`
+        MissionID string `json:"mission_id"`
+    }
+
+    reqBody := new(RequestBody)
+
+    err := c.BodyParser(&reqBody)
+    if err != nil {
+        c.Status(http.StatusUnprocessableEntity).JSON(
+            &fiber.Map{"message": "request failed"})
+        return err
+    }
+
+    var result sql.NullString
+    err = storage.DB.Raw("SELECT mission_completion(?, ?)", reqBody.UserID, reqBody.MissionID).Scan(&result).Error
+    if err != nil {
+        c.Status(http.StatusInternalServerError).JSON(
+            &fiber.Map{"message": "database error"})
+        return err
+    }
+
+    return nil
 }

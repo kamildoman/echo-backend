@@ -2,6 +2,7 @@ package functions
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/kamildoman/echo-backend/storage"
@@ -13,7 +14,7 @@ type Comment struct {
     ID string
     Message string `json:"message"`
     UserID string `json:"userId"`
-	CreatedAt int `json:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
     PostID string `json:"postId"`
     User User `gorm:"foreignkey:UserID"`
     Post Post `gorm:"foreignkey:PostID"`
@@ -22,7 +23,7 @@ type Comment struct {
 type Post struct {
     ID string
     Message string `json:"message"`
-	CreatedAt int `json:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
     UserID string `json:"userId"`
 	Likes pq.StringArray `gorm:"type:text[]" json:"likes"`
     User User `gorm:"foreignkey:UserID"`
@@ -158,6 +159,7 @@ func GetPosts(context *fiber.Ctx) error {
 		postMap["id"] = post.ID
 		postMap["likes"] = post.Likes
 		postMap["userId"] = post.UserID
+		postMap["created_at"] = post.CreatedAt
 		postMap["username"] = post.User.Username
 		postMap["avatar"] = post.User.Avatar
 
@@ -167,6 +169,7 @@ func GetPosts(context *fiber.Ctx) error {
 			commentMap := make(map[string]interface{})
 			commentMap["message"] = comment.Message
 			commentMap["userId"] = comment.UserID
+			commentMap["created_at"] = comment.CreatedAt
 			commentMap["username"] = comment.User.Username
 			commentMap["avatar"] = comment.User.Avatar
 

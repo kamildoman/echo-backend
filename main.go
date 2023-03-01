@@ -22,6 +22,8 @@ func SetupRoutes (app *fiber.App) {
 	api.Post("send_email", functions.SendEmail)
 	api.Post("create_mission", functions.CreateMission)
 	api.Post("create_mission_progress", functions.CreateMissionProgress)
+	api.Post("create_metric_definition", functions.CreateMetricDefinition)
+	api.Post("mission_complete", functions.MissionComplete)
 	api.Get("posts", functions.GetPosts)
 	api.Get("user", functions.AuthenticateUser)
 	api.Get("health", functions.HealthCheck)
@@ -31,6 +33,7 @@ func SetupRoutes (app *fiber.App) {
 	api.Get("all_missions", functions.GetAllMissions)
 	api.Get("all_missions_progress", functions.GetAllMissionProgress)
 	api.Get("users_mission_progress", functions.GetUsersMissionProgress)
+	api.Get("all_metric_definitions", functions.GetAllMetricDefinitions)
 	api.Delete("delete_user", functions.DeleteUserByID)
 }
 
