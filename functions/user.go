@@ -24,17 +24,38 @@ type User struct {
     ID string `json:"id"`
     Email string `json:"email"`
     Username string `json:"username"`
-    Password string `json:"password"`
+    Password string `json:"-"`
 	Avatar string `json:"avatar,omitempty"`
     Level int `json:"level"`
 	Role int `json:"role"`
+	ExpPoints   int    `json:"exp_points"`
+	MissingExp  int    `json:"missing_exp"`
+	Coins int `json:"coins"`
     // Posts []Post `gorm:"foreignkey:UserID"`
     // Comments []Comment `gorm:"foreignkey:UserID"`
+}
+
+type GamLevels struct {
+	LevelId string `json:"level_id"`
+	Level int `json:"level"`
+}
+
+type GamLevelProgress struct {
+	UserId string
+	LevelId string
+	ExpPoints int
+	MissingExp int
+	Coins int
 }
 
 type Invite struct {
 	Token string `json:"token"`
 	Email string `json:"email"`
+}
+
+type Employees struct {
+	EmployeeId string
+	UserId string
 }
 
 func HealthCheck(c *fiber.Ctx) error {
@@ -43,10 +64,41 @@ func HealthCheck(c *fiber.Ctx) error {
 	return nil
 }
 
+func GetUserIdByEmployeeId(employeeId string) (string, error) {
+	var employee Employees
+	if err := storage.DB.Table("employees").Select("user_id").Where("employee_id = ?", employeeId).First(&employee).Error; err != nil {
+		return "", err
+	}
+	return employee.UserId, nil
+}
+
+func GetEmployeeIdByUserId(userId string) (string, error) {
+	var employee Employees
+	if err := storage.DB.Table("employees").Select("employee_id").Where("user_id = ?", userId ).First(&employee).Error; err != nil {
+		return "", err
+	}
+	return employee.EmployeeId, nil
+}
+
 func GetUserByID(context *fiber.Ctx) error {
 	id := context.Query("id")
 	var user User
-	err := storage.DB.Select("id, level, username, email, avatar").Where("id = ?", id).First(&user).Error
+	err := storage.DB.Select(`
+			users.id,
+			users.username,
+			users.email,
+			users.avatar,
+			gam_level_progress.exp_points,
+			gam_level_progress.missing_exp,
+			gam_level_progress.coins,
+			gam_levels.level
+		`).
+		Joins(`
+			LEFT JOIN gam_level_progress ON users.id = gam_level_progress.user_id
+			LEFT JOIN gam_levels ON gam_level_progress.level_id = gam_levels.level_id
+		`).
+		Where("users.id = ?", id).
+		First(&user).Error
 	if err != nil {
 		context.Status(http.StatusBadRequest).JSON(
 			&fiber.Map{"message": "could not get user"})
@@ -55,6 +107,7 @@ func GetUserByID(context *fiber.Ctx) error {
 	context.Status(http.StatusOK).JSON(user)
 	return nil
 }
+
 
 func DeleteUserByID(context *fiber.Ctx) error {
 	id := context.Query("id")
@@ -296,13 +349,35 @@ func AuthenticateUser (context *fiber.Ctx) error {
 
 	claims := token.Claims.(*jwt.StandardClaims)
 
-	var user models.Users
+	var user User
 
-	storage.DB.Where("id = ?", claims.Issuer).First(&user)
+	err = storage.DB.Select(`
+			users.id,
+			users.username,
+			users.email,
+			users.avatar,
+			users.role,
+			gam_level_progress.exp_points,
+			gam_level_progress.missing_exp,
+			gam_level_progress.coins,
+			gam_levels.level
+		`).
+		Joins(`
+			LEFT JOIN gam_level_progress ON users.id = gam_level_progress.user_id
+			LEFT JOIN gam_levels ON gam_level_progress.level_id = gam_levels.level_id
+		`).
+		Where("users.id = ?", claims.Issuer).
+		First(&user).Error
+	if err != nil {
+		context.Status(http.StatusBadRequest).JSON(
+			&fiber.Map{"message": "could not get user"})
+		return err
+	}
 
 	var count int64
-	storage.DB.Model(&Messages{}).Where("recieve_user_id = ? and read = false", user.ID).Count(&count)
+	storage.DB.Model(&Messages{}).Where("receive_user_id = ? and read = false", user.ID).Count(&count)
 
+	
 	return context.JSON(user)
 }
 

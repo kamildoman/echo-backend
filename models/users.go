@@ -73,18 +73,24 @@ type MetricDefinitions struct {
 	Type              string `json:"type"`
 	Category          string `json:"category"`
 	Description       string `json:"description"`
-	Exp               int    `json:"exp"`
-	Coins             int    `json:"coins"`
 	CalculationMethod string `json:"calculation_method"`
 	Direction         string `json:"direction"`
 	EndValue          int    `json:"end_value"`
 	Weight            int    `json:"weight"`
 	Target            string `json:"target"`
 	PeriodId          int    `json:"period_id"`
+	RenewNextMonth	  bool   `json:"renew_next_month"`
+}
+
+type MetricDefinitionRewards struct {
+	MetricDefId  string `json:"metric_def_id"`
+	Percentage float64 `json:"percentage"`
+	Exp int `json:"exp"`
+	Coins int `json:"coins"`
 }
 
 func MigrateUsers(db *gorm.DB) error{
 	// db.Migrator().CreateTable(Messages{})
-	err := db.AutoMigrate(&Users{}, &Posts{}, &Comments{}, &Messages{}, &GamMission{}, &GamMissionProgress{}, &MetricDefinitions{})
+	err := db.AutoMigrate(&Users{}, &Posts{}, &Comments{}, &Messages{}, &GamMission{}, &GamMissionProgress{}, &MetricDefinitions{}, &MetricDefinitionRewards{})
 	return err
 }
