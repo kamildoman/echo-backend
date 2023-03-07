@@ -189,13 +189,22 @@ func UpdateAvatar (c *fiber.Ctx) error {
 	}
 	img = imaging.Resize(img, 100, 100, imaging.Lanczos)
 
-    fmt.Println("Uploading file to S3...")
-	reader := bytes.NewReader(decodedImage)
-    result, err := svc.Upload(&s3manager.UploadInput{
-        Bucket: aws.String("echoavatars"),
-        Key:    aws.String(blobData.Name),
-        Body:   reader,
-    })
+	// Encode the resized image as a JPEG
+	var resizedImage bytes.Buffer
+	err = imaging.Encode(&resizedImage, img, imaging.JPEG)
+	if err != nil {
+		c.Status(http.StatusInternalServerError).JSON(
+			&fiber.Map{"message": "Failed to encode the image"})
+		return err
+	}
+
+	fmt.Println("Uploading file to S3...")
+	reader := bytes.NewReader(resizedImage.Bytes())
+	result, err := svc.Upload(&s3manager.UploadInput{
+		Bucket: aws.String("echoavatars"),
+		Key:    aws.String(blobData.Name),
+		Body:   reader,
+	})
 
 	if err != nil {
 		c.SendStatus(fiber.StatusInternalServerError)
