@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/disintegration/imaging"
 	"github.com/gofiber/fiber/v2"
 	"github.com/kamildoman/echo-backend/models"
 	"github.com/kamildoman/echo-backend/storage"
@@ -178,6 +179,16 @@ func UpdateAvatar (c *fiber.Ctx) error {
 			&fiber.Map{"message": "Error decoding the image"})
 		return err
 	}
+
+	// Resize the image
+	img, err := imaging.Decode(bytes.NewReader(decodedImage))
+	if err != nil {
+		c.Status(http.StatusInternalServerError).JSON(
+			&fiber.Map{"message": "Failed to decode the image"})
+		return err
+	}
+	img = imaging.Resize(img, 100, 100, imaging.Lanczos)
+
     fmt.Println("Uploading file to S3...")
 	reader := bytes.NewReader(decodedImage)
     result, err := svc.Upload(&s3manager.UploadInput{

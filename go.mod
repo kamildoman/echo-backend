@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/aws/aws-sdk-go v1.44.195
 	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
+	github.com/disintegration/imaging v1.6.2
 	github.com/gofiber/fiber/v2 v2.41.0
 	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.7
@@ -30,6 +31,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.43.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
+	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
 	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/text v0.5.0 // indirect
 )
