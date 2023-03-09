@@ -29,9 +29,6 @@ type User struct {
 	Avatar string `json:"avatar,omitempty"`
     Level int `json:"level"`
 	Role int `json:"role"`
-	ExpPoints   int    `json:"exp_points"`
-	MissingExp  int    `json:"missing_exp"`
-	Coins int `json:"coins"`
     // Posts []Post `gorm:"foreignkey:UserID"`
     // Comments []Comment `gorm:"foreignkey:UserID"`
 }

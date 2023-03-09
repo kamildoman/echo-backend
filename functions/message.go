@@ -60,6 +60,19 @@ func SendMessage(context *fiber.Ctx) error {
         }
     }
 
+	allIds := []string{messageMultiple.SendUserID}
+    allIds = append(allIds, messageMultiple.ReceiveUserIDs...)
+
+	message := BroadcastMessage{
+		Type: "NEW_MESSAGE",
+		Ids: allIds,
+	}
+
+	broadcast <- map[string]interface{}{
+		"type": message.Type,
+		"ids": message.Ids,
+	}
+
     context.Status(http.StatusOK).JSON(
         &fiber.Map{"message": "message sent!"})
     return nil

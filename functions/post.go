@@ -40,6 +40,20 @@ type Like struct {
 	UserID string `json:"user_id"`
 }
 
+type BroadcastMessage struct {
+    Type string
+    Data map[string]interface{}
+	Ids []string
+}
+
+
+var broadcast = make(chan map[string]interface{})
+
+func GetBroadcast() chan map[string]interface{} {
+    return broadcast
+}
+
+
 func ToggleLike(context *fiber.Ctx) error {
     like := Like{}
 	err := context.BodyParser(&like)
@@ -50,7 +64,7 @@ func ToggleLike(context *fiber.Ctx) error {
 	}
 
     post := Post{}
-    err = storage.DB.Where("id = ?", like.PostID).First(&post).Error
+    err = storage.DB.Where("id = ?", like.PostID).Preload("User").Preload("Comments").Preload("Comments.User").First(&post).Error
     if err != nil {
         context.Status(http.StatusBadRequest).JSON(
             &fiber.Map{"message": "could not find the post"})
@@ -77,6 +91,18 @@ func ToggleLike(context *fiber.Ctx) error {
             &fiber.Map{"message": "could not save the post"})
         return err
     }
+
+	postData := serializePost(&post)
+	message := BroadcastMessage{
+		Type: "UPDATE_POST",
+		Data: postData,
+	}
+
+	broadcast <- map[string]interface{}{
+		"type": message.Type,
+		"data": message.Data,
+	}
+
 
     context.Status(http.StatusOK).JSON(
         &fiber.Map{"message": "post updated"})
@@ -105,6 +131,17 @@ func CreatePost(context *fiber.Ctx) error {
 		return err
 	}
 
+	postData := serializePost(&post)
+	message := BroadcastMessage{
+		Type: "NEW_POST",
+		Data: postData,
+	}
+
+	broadcast <- map[string]interface{}{
+		"type": message.Type,
+		"data": message.Data,
+	}
+
 	context.Status(http.StatusOK).JSON(
 		&fiber.Map{"message": "post created"})
 	return nil
@@ -131,6 +168,21 @@ func CreateComment(context *fiber.Ctx) error {
 		return err
 	}
 
+	post := Post{}
+    err = storage.DB.Where("id = ?", comment.PostID).Preload("User").Preload("Comments").Preload("Comments.User").First(&post).Error
+
+	postData := serializePost(&post)
+	message := BroadcastMessage{
+		Type: "UPDATE_POST",
+		Data: postData,
+	}
+
+	broadcast <- map[string]interface{}{
+		"type": message.Type,
+		"data": message.Data,
+	}
+	
+
 	context.Status(http.StatusOK).JSON(
 		&fiber.Map{"message": "comment created"})
 	return nil
@@ -154,33 +206,38 @@ func GetPosts(context *fiber.Ctx) error {
 	// Construct the final response
 	res := make([]map[string]interface{}, len(posts))
 	for i, post := range posts {
-		postMap := make(map[string]interface{})
-		postMap["message"] = post.Message
-		postMap["id"] = post.ID
-		postMap["likes"] = post.Likes
-		postMap["userId"] = post.UserID
-		postMap["created_at"] = post.CreatedAt
-		postMap["username"] = post.User.Username
-		postMap["avatar"] = post.User.Avatar
-
-		// Find all comments for the post
-		var postComments []map[string]interface{}
-		for _, comment := range post.Comments {
-			commentMap := make(map[string]interface{})
-			commentMap["message"] = comment.Message
-			commentMap["userId"] = comment.UserID
-			commentMap["created_at"] = comment.CreatedAt
-			commentMap["username"] = comment.User.Username
-			commentMap["avatar"] = comment.User.Avatar
-
-			postComments = append(postComments, commentMap)
-		}
-		postMap["comments"] = postComments
-		res[i] = postMap
+		res[i] = serializePost(post)
 	}
 
 	context.Status(http.StatusOK).JSON(
 		&fiber.Map{"data": res})
 
 	return nil
+}
+
+func serializePost(post *Post) map[string]interface{} {
+    postMap := make(map[string]interface{})
+    postMap["message"] = post.Message
+    postMap["id"] = post.ID
+    postMap["likes"] = post.Likes
+    postMap["userId"] = post.UserID
+    postMap["created_at"] = post.CreatedAt
+    postMap["username"] = post.User.Username
+    postMap["avatar"] = post.User.Avatar
+
+    // Find all comments for the post
+    var postComments []map[string]interface{}
+    for _, comment := range post.Comments {
+        commentMap := make(map[string]interface{})
+        commentMap["message"] = comment.Message
+        commentMap["userId"] = comment.UserID
+        commentMap["created_at"] = comment.CreatedAt
+        commentMap["username"] = comment.User.Username
+        commentMap["avatar"] = comment.User.Avatar
+
+        postComments = append(postComments, commentMap)
+    }
+    postMap["comments"] = postComments
+
+    return postMap
 }
