@@ -53,6 +53,30 @@ func GetBroadcast() chan map[string]interface{} {
     return broadcast
 }
 
+func DeletePostByID(context *fiber.Ctx) error {
+	id := context.Query("id")
+	err := storage.DB.Where("id = ?", id).Delete(&Post{}).Error
+	if err != nil {
+		context.Status(http.StatusBadRequest).JSON(
+			&fiber.Map{"message": "could not delete the post"})
+		return err
+	}
+
+	message := BroadcastMessage{
+		Type: "DELETE_POST",
+		Data: map[string]interface{}{"id": id},
+	}
+
+	broadcast <- map[string]interface{}{
+		"type": message.Type,
+		"data": message.Data,
+	}
+
+	context.Status(http.StatusOK).JSON(
+		&fiber.Map{"message": "post deleted successfully"})
+	return nil
+}
+
 
 func ToggleLike(context *fiber.Ctx) error {
     like := Like{}
@@ -130,6 +154,11 @@ func CreatePost(context *fiber.Ctx) error {
 			&fiber.Map{"message": "could not create the post"})
 		return err
 	}
+
+	user := User{}
+	err = storage.DB.Where("id = ?", post.UserID).First(&user).Error
+
+	post.User = user
 
 	postData := serializePost(&post)
 	message := BroadcastMessage{

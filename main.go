@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -63,8 +62,6 @@ func runHub() {
 			  }
 	
             for connection, client := range clients {
-				fmt.Println(client.id)
-				fmt.Println(ids)
 				if messageType != "NEW_MESSAGE" || Contains(ids, client.id) {
 					err := connection.WriteMessage(websocket.TextMessage, []byte(postBytes)); 
 					if err != nil {
@@ -115,6 +112,7 @@ func SetupRoutes (app *fiber.App) {
 	api.Get("all_metric_definitions", functions.GetAllMetricDefinitions)
 	api.Get("all_periods", functions.GetAllPeriods)
 	api.Delete("delete_user", functions.DeleteUserByID)
+	api.Delete("delete_post", functions.DeletePostByID)
 
 	api.Get("/ws/:id", websocket.New(func(c *websocket.Conn) {
 		// When the function returns, unregister the client and close the connection
@@ -127,19 +125,19 @@ func SetupRoutes (app *fiber.App) {
 		id := c.Params("id")
 
 		// Register the client with the id
-		// var exists bool
-		// 	for _, c := range clients {
-		// 		if c.id == id {
-		// 			exists = true
-		// 			break
-		// 		}
-		// 	}
+		var exists bool
+			for _, c := range clients {
+				if c.id == id {
+					exists = true
+					break
+				}
+			}
 
-		// if (!exists) {
-			
-		// }
-		register <- c
-		clients[c] = client{id: id}
+		if (!exists) {
+			register <- c
+			clients[c] = client{id: id}
+		}
+		
 		
 		for {
 			_, message, err := c.ReadMessage()

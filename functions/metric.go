@@ -35,7 +35,7 @@ type Metric struct {
 	MetricId string
 	MetricDefId string
 	EmployeeId string
-	CurrentProgress int
+	CurrentProgress float64
 	PeriodId int
 	MetricDefinitions MetricDefinitions `gorm:"foreignkey:MetricDefId"`
 }
