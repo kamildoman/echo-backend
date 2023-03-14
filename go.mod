@@ -12,7 +12,6 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/satori/go.uuid v1.2.0
 	golang.org/x/crypto v0.4.0
-	golang.org/x/exp v0.0.0-20230307190834-24139beb5833
 	gorm.io/driver/postgres v1.4.6
 	gorm.io/gorm v1.24.3
 )
